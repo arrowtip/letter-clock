@@ -19,9 +19,9 @@ int a = 0;
 
 void setup() {
   Serial.begin(9600);
-  r = 50;
-  g = 50;
-  b = 50;
+  r = 100;
+  g = 100;
+  b = 80;
   
   pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
 

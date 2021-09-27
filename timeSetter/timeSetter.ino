@@ -1,11 +1,12 @@
 #include<DS3231.h>
 
 const int SECOND = 0;
-const int MINUTE = 0;
-const int HOUR = 12;
-const int DAY = 1;
-const int MONTH = 6;
+const int MINUTE = 50;
+const int HOUR = 17;
+const int DAY = 27;
+const int MONTH = 9;
 const int YEAR = 2021;
+const int DOW = 5;    //monday = 1 etc
 
 
 DS3231 rtc(SDA, SCL);
@@ -14,8 +15,10 @@ Time t;
 
 void setup() {
   rtc.begin();
-  rtc.setTime(17, 47, 0);
-  rtc.setDate(1, 5, 2021);
+  rtc.setTime(HOUR, MINUTE, SECOND);
+  rtc.setDate(DAY, MONTH, YEAR);
+  rtc.setDOW(DOW);
+  Serial.begin(9600);
 
 }
 
@@ -24,4 +27,8 @@ void loop() {
   Serial.print(t.hour);
   Serial.print(" : ");
   Serial.println(t.min);
+  Serial.print("date: ");
+  Serial.println(t.date);
+  Serial.println(t.mon);
+  Serial.println(t.year);
 }

@@ -20,9 +20,9 @@ int a = 0;
 
 void setup() {
   Serial.begin(9600);
-  r = 50;
-  g = 50;
-  b = 50;
+  r = 100;
+  g = 100;
+  b = 70;
   
   pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
 
@@ -46,7 +46,6 @@ if(a == 0){
   pixels.setPixelColor(4, pixels.Color(r, g, b));
   pixels.setPixelColor(5, pixels.Color(r, g, b));
 
-  if(t.min < 25){
       switch (t.hour + ((t.min < 25) ? 0 : 1)) {
           case 1:
           case 13: eins();
@@ -85,7 +84,7 @@ if(a == 0){
           case 0: zwoelf();
           break;
       }
-  }
+  
 
 
 
