@@ -16,18 +16,28 @@ int b;
 
 int i;
 
-int a = 0;
+const int fromSensor = 40;
+const int toSensor = 900;
+const int fromBrightness = 10;
+const int toBrightness = 200;
+unsigned long millisTime = 0;
+int currentBrightness;
 
 void setup() {
   Serial.begin(9600);
-  r = 100;
-  g = 100;
-  b = 70;
+  pinMode(13, OUTPUT);
+  pinMode(A1, INPUT);
+  r = 255;
+  g = 255;
+  b = 180;
   
   pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
-
   rtc.begin();
 
+  digitalWrite(13, HIGH);
+  currentBrightness = map(analogRead(A1), fromSensor, toSensor, fromBrightness, toBrightness);
+  digitalWrite(13, LOW);
+  pixels.setBrightness(currentBrightness);
  
 }
 
@@ -38,8 +48,6 @@ void loop() {
   Serial.println(t.min);
   Serial.println(rtc.getDOWStr(FORMAT_SHORT));
   
-
-if(a == 0){
   pixels.setPixelColor(0, pixels.Color(r, g, b));     //"es ist"
   pixels.setPixelColor(1, pixels.Color(r, g, b));
   pixels.setPixelColor(3, pixels.Color(r, g, b));
@@ -141,11 +149,20 @@ if(a == 0){
     pixels.setPixelColor(109 + i, pixels.Color(r, g, b));
   }
 
+  if (millis() - millisTime >= 1000 || millis() - millisTime < 0) {
+    digitalWrite(13, HIGH);
+    millisTime = millis();
+    currentBrightness = map(analogRead(A1), fromSensor, toSensor, fromBrightness, toBrightness);
+    pixels.setBrightness(currentBrightness);
+    Serial.print("brightness: ");
+    Serial.println(currentBrightness);
+    digitalWrite(13, LOW);
+  }
+
   
   pixels.show();
   delay(20);
   pixels.clear();
-}
 
 }
 
@@ -282,7 +299,6 @@ void elf(){
   pixels.setPixelColor(49, pixels.Color(r, g, b));
   pixels.setPixelColor(50, pixels.Color(r, g, b));
   pixels.setPixelColor(51, pixels.Color(r, g, b));
-  pixels.setPixelColor(52, pixels.Color(r, g, b));
 }
 void zwoelf(){
   pixels.setPixelColor(94, pixels.Color(r, g, b));
