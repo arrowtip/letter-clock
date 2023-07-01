@@ -1,7 +1,7 @@
-#include <DS3231.h>     //http://rinkydinkelectronics.com/library.php?id=73
+#include "src/DS3231/DS3231.h"     //http://rinkydinkelectronics.com/library.php?id=73
 #include <Adafruit_NeoPixel.h>
 
-#define PIN 6    // Which pin on the Arduino is connected to the NeoPixels?
+#define PIN 2    // Which pin on the Arduino is connected to the NeoPixels?
 #define SENSOR_POWER 13
 #define SENSOR_VAL A0
 #define NUMPIXELS 114     // How many NeoPixels are attached to the Arduino?
@@ -16,14 +16,14 @@ struct Brightness {
   unsigned char b;
 };
 Brightness led_brightness;
-int i;
 
 const int fromSensor = 40;
 const int toSensor = 900;
 const int fromBrightness = 10;
 const int toBrightness = 200;
 unsigned long millisTime = 0;
-int currentBrightness;
+int currentBrightness = 200;
+unsigned char hour_blinked; // last hour that activated the bell
 
 void setup() {
   Serial.begin(9600);
@@ -37,14 +37,18 @@ void setup() {
   rtc.begin();
 
   digitalWrite(SENSOR_POWER, HIGH);
-  currentBrightness = map(analogRead(SENSOR_VAL), fromSensor, toSensor, fromBrightness, toBrightness);
+  // currentBrightness = map(analogRead(SENSOR_VAL), fromSensor, toSensor, fromBrightness, toBrightness);
   digitalWrite(SENSOR_POWER, LOW);
   pixels.setBrightness(currentBrightness);
  
+  currentBrightness = 200;
+  Serial.println("startup complete");
 }
 
 void loop() {
+  Serial.println("loop start");
   t = rtc.getTime();
+  Serial.println("time read");
   Serial.print(t.hour);
   Serial.print(" : ");
   Serial.println(t.min);
@@ -56,45 +60,36 @@ void loop() {
   pixels.setPixelColor(4, pixels.Color(led_brightness.r, led_brightness.g, led_brightness.b));
   pixels.setPixelColor(5, pixels.Color(led_brightness.r, led_brightness.g, led_brightness.b));
 
-      switch (t.hour + ((t.min < 25) ? 0 : 1)) {
-          case 1:
-          case 13: eins();
-          break;
-          case 2:
-          case 14: zwei();
-          break;
-          case 3:
-          case 15: drei();
-          break;
-          case 4:
-          case 16: vier();
-          break;
-          case 5:
-          case 17: fuenf();
-          break;
-          case 6:
-          case 18: sechs();
-          break;
-          case 7:
-          case 19: sieben();
-          break;
-          case 8:
-          case 20: acht();
-          break;
-          case 9:
-          case 21: neun();
-          break;
-          case 10:
-          case 22: zehn();
-          break;
-          case 11:
-          case 23: elf();
-          break;
-          case 12:
-          case 0: zwoelf();
-          break;
-      }
+  show_hour();
+  show_five_min_steps();
+  show_min_acc();
+
+  if (millis() - millisTime >= 1000) {
+    digitalWrite(SENSOR_POWER, HIGH);
+    millisTime = millis();
+    // currentBrightness = map(analogRead(SENSOR_VAL), fromSensor, toSensor, fromBrightness, toBrightness);
+    pixels.setBrightness(currentBrightness);
+    Serial.print("brightness: ");
+    Serial.println(currentBrightness);
+    digitalWrite(13, SENSOR_POWER);
+  }
+
   
+  pixels.show();
+  delay(20);
+  pixels.clear();
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+
+void show_min_acc() {
+  for(int i = 1; i <= t.min % 5; i++){      //minuten
+    pixels.setPixelColor(109 + i, pixels.Color(led_brightness.r, led_brightness.g, led_brightness.b));
+  }
+}
+
+void show_five_min_steps() {
   if(t.min < 5){      //weniger als 5 nach
     uhr();
   }
@@ -144,28 +139,48 @@ void loop() {
     vor();
   }
 
-  for(i=1; i <= t.min % 5; i++){      //minuten
-    pixels.setPixelColor(109 + i, pixels.Color(led_brightness.r, led_brightness.g, led_brightness.b));
-  }
-
-  if (millis() - millisTime >= 1000 || millis() - millisTime < 0) {
-    digitalWrite(SENSOR_POWER, HIGH);
-    millisTime = millis();
-    currentBrightness = map(analogRead(SENSOR_VAL), fromSensor, toSensor, fromBrightness, toBrightness);
-    pixels.setBrightness(currentBrightness);
-    Serial.print("brightness: ");
-    Serial.println(currentBrightness);
-    digitalWrite(13, SENSOR_POWER);
-  }
-
-  
-  pixels.show();
-  delay(20);
-  pixels.clear();
-
 }
-
-//////////////////////////////////////////////////////////////////////////////////
+void show_hour() {
+  switch (t.hour + ((t.min < 25) ? 0 : 1)) {
+    case 1:
+    case 13: eins();
+    break;
+    case 2:
+    case 14: zwei();
+    break;
+    case 3:
+    case 15: drei();
+    break;
+    case 4:
+    case 16: vier();
+    break;
+    case 5:
+    case 17: fuenf();
+    break;
+    case 6:
+    case 18: sechs();
+    break;
+    case 7:
+    case 19: sieben();
+    break;
+    case 8:
+    case 20: acht();
+    break;
+    case 9:
+    case 21: neun();
+    break;
+    case 10:
+    case 22: zehn();
+    break;
+    case 11:
+    case 23: elf();
+    break;
+    case 12:
+    case 24:
+    case 0: zwoelf();
+    break;
+  }
+}
 //prepos
 void nach(){
   pixels.setPixelColor(40, pixels.Color(led_brightness.r, led_brightness.g, led_brightness.b));
