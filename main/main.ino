@@ -42,6 +42,7 @@ void setup() {
   rtc.begin();
   rtc_time = rtc.getTime();
   
+  hour_blinked = rtc_time.hour;
 
   currentBrightness = get_brightness();
   pixels.setBrightness(currentBrightness);
@@ -56,17 +57,20 @@ void loop() {
   Serial.println(rtc_time.min);
   Serial.println(rtc.getDOWStr(FORMAT_SHORT));
   
-  pixels.setPixelColor(0, pixels.Color(led_color.r, led_color.g, led_color.b));     //"es ist"
-  pixels.setPixelColor(1, pixels.Color(led_color.r, led_color.g, led_color.b));
-  pixels.setPixelColor(3, pixels.Color(led_color.r, led_color.g, led_color.b));
-  pixels.setPixelColor(4, pixels.Color(led_color.r, led_color.g, led_color.b));
-  pixels.setPixelColor(5, pixels.Color(led_color.r, led_color.g, led_color.b));
-
+  if (rtc_time.hour - hour_blinked > 0) {
+    hour_blinked = rtc_time.hour;
+    show_bell();
+  } else {
+    delay(1000);
+  }
+  pixels.clear();
+  show_es_ist();
   show_hour();
   show_five_min_steps();
   show_min_acc();
+  pixels.show();
 
-  if (millis() - millisTime >= 1000) {
+  if (millis() - millisTime >= 10000) {
     millisTime = millis();
     currentBrightness = get_brightness();
     pixels.setBrightness(currentBrightness);
@@ -75,13 +79,27 @@ void loop() {
   }
 
   
-  pixels.show();
-  delay(20);
-  pixels.clear();
 
 }
 
 //////////////////////////////////////////////////////////////////////////////////
+
+void show_bell() {
+  
+  unsigned long start_time = millis();
+  float sin_brightness = 0;
+  while (millis() - start_time < 500) {
+    sin_brightness = sin(((float)millis() - start_time) * PI / 500.0);
+    for (int i = 0; i < NUMPIXELS; i++) {
+      pixels.setPixelColor(i, pixels.Color(sin_brightness * led_color.r, 
+        sin_brightness * led_color.g, 
+        sin_brightness * led_color.b));     //"es ist"
+    }
+    Serial.println(sin_brightness);
+    pixels.show();
+  }
+}
+
 
 unsigned char get_brightness() {
   if (rtc_time.hour < 5) {
@@ -196,6 +214,15 @@ void show_hour() {
   }
 }
 //prepos
+
+void show_es_ist() {
+  pixels.setPixelColor(0, pixels.Color(led_color.r, led_color.g, led_color.b));     //"es ist"
+  pixels.setPixelColor(1, pixels.Color(led_color.r, led_color.g, led_color.b));
+  pixels.setPixelColor(3, pixels.Color(led_color.r, led_color.g, led_color.b));
+  pixels.setPixelColor(4, pixels.Color(led_color.r, led_color.g, led_color.b));
+  pixels.setPixelColor(5, pixels.Color(led_color.r, led_color.g, led_color.b));
+}
+
 void nach(){
   pixels.setPixelColor(40, pixels.Color(led_color.r, led_color.g, led_color.b));
   pixels.setPixelColor(41, pixels.Color(led_color.r, led_color.g, led_color.b));
