@@ -91,7 +91,8 @@ void show_bell() {
   while (millis() - start_time < 500) {
     sin_brightness = sin(((float)millis() - start_time) * PI / 500.0);
     for (int i = 0; i < NUMPIXELS; i++) {
-      pixels.setPixelColor(i, pixels.Color(sin_brightness * led_color.r, 
+      pixels.setPixelColor(i, pixels.Color(
+        sin_brightness * led_color.r, 
         sin_brightness * led_color.g, 
         sin_brightness * led_color.b));     //"es ist"
     }
