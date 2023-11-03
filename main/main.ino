@@ -171,7 +171,6 @@ void show_five_min_steps() {
     minfuenf();
     vor();
   }
-
 }
 void show_hour() {
   switch (rtc_time.hour + ((rtc_time.min < 25) ? 0 : 1)) {
