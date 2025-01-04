@@ -4,11 +4,16 @@
 #include <array>
 #include <cstdint>
 #include "../util/timestamp.hpp"
+#include "../util/color.hpp"
 
 class ClockBoard {
  public:
+  enum class Transition {
+    Linear,
+  };
+
   static void init();
-  static bool update(const Duration time_since_last_transition);
+  static bool update(const float progress, const Transition transition);
   static void stage_clear();
 
   static inline void stage_es_ist() {
@@ -163,6 +168,7 @@ class ClockBoard {
   static constexpr uint8_t num_pixels = 114;
   static constexpr uint8_t led_pin = 2;
   static constexpr uint8_t brightness = 100;
+  static constexpr Color color_time = Color(0xa0a0a0);
   static inline Adafruit_NeoPixel led_strip;
   static inline std::array<uint8_t, num_pixels> led_buf_1;
   static inline std::array<uint8_t, num_pixels> led_buf_2;

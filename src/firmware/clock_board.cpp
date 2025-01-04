@@ -9,10 +9,17 @@ void ClockBoard::init() {
   stage_clear();
 }
 
-void ClockBoard::stage_clear() {
-  staging.fill(0);
-}
+void ClockBoard::stage_clear() { staging.fill(0); }
 
-bool ClockBoard::update(const Duration time_since_last_transition) {
-
+bool ClockBoard::update(const float progress, const Transition transition) {
+  switch (transition) {
+  case Transition::Linear:
+    for (uint i = 0; i < num_pixels; i++) {
+      Color value = color_time * progress * staging[i] +
+                    color_time * (1.0f - progress) * active[i];
+      led_strip.setPixelColor(i, static_cast<uint32_t>(value));
+    }
+    led_strip.show();
+    break;
+  }
 }

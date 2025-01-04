@@ -1,8 +1,8 @@
 #pragma once
 
-#include "esp_timer.h"
 #include "metrics.hpp"
 #include <cstdint>
+#include <user_interface.h>
 
 class Timestamp {
   friend Timestamp operator+(const Timestamp &, const class Duration &);
@@ -23,7 +23,7 @@ class Timestamp {
 
 public:
   inline static Timestamp now() {
-    return Timestamp(esp_timer_get_time());
+    return Timestamp(system_get_time());
   }
 
   Timestamp() = default;
