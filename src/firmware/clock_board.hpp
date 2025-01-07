@@ -1,19 +1,24 @@
 #pragma once
 
+#include "../util/color.hpp"
+#include "../util/timestamp.hpp"
 #include <Adafruit_NeoPixel.h>
 #include <array>
 #include <cstdint>
-#include "../util/timestamp.hpp"
-#include "../util/color.hpp"
+#include <ESP8266WiFi.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 class ClockBoard {
- public:
+public:
   enum class Transition {
     Linear,
   };
 
   static void init();
-  static bool update(const float progress, const Transition transition);
+  static bool update(const Duration time_since_last_transition,
+                     const Duration transition_time,
+                     const Transition transition);
   static void stage_clear();
 
   static inline void stage_es_ist() {
@@ -163,8 +168,7 @@ class ClockBoard {
     staging[98] = 1;
   }
 
-
- private:
+private:
   static constexpr uint8_t num_pixels = 114;
   static constexpr uint8_t led_pin = 2;
   static constexpr uint8_t brightness = 100;
@@ -174,7 +178,7 @@ class ClockBoard {
   static inline std::array<uint8_t, num_pixels> led_buf_2;
   static inline std::array<uint8_t, num_pixels> &active = led_buf_1;
   static inline std::array<uint8_t, num_pixels> &staging = led_buf_2;
-  
-
-
+  static void swap_buffers();
+  static inline WiFiUDP wifiUdp;
+  static inline NTPClient ntpClient = NTPClient(wifiUdp, "pool.ntp.org");
 };

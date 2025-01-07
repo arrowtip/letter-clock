@@ -1,15 +1,17 @@
 #include "firmware/clock_board.hpp"
 #include "util/timestamp.hpp"
+#include <Arduino.h>
 
-
-extern "C" void app_main() {
+void setup() {
   ClockBoard::init();
 
-  while (true) {
+}
+
+void loop() {
+
     // get time
 
     // check if update necessary
 
     // sleep a bit
-  }
 }
