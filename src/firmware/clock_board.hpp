@@ -5,9 +5,6 @@
 #include <Adafruit_NeoPixel.h>
 #include <array>
 #include <cstdint>
-#include <ESP8266WiFi.h>
-#include <NTPClient.h>
-#include <WiFiUdp.h>
 
 class ClockBoard {
 public:
@@ -20,9 +17,6 @@ public:
                      const Duration transition_time,
                      const Transition transition);
   static void stage_clear();
-
-  static uint32_t get_tod_hour();
-  static uint32_t get_tod_minute();
 
   static inline void stage_es_ist() {
     staging[0] = 1;
@@ -176,16 +170,10 @@ private:
   static constexpr uint8_t led_pin = 2;
   static constexpr uint8_t brightness = 100;
   static constexpr Color color_time = Color(0xa0a0a0);
-  static constexpr Duration ntp_time_offset = Duration::from_s(0);
-  static constexpr Duration ntp_update_interval = Duration::from_s(61);
   static inline Adafruit_NeoPixel led_strip;
   static inline std::array<uint8_t, num_pixels> led_buf_1;
   static inline std::array<uint8_t, num_pixels> led_buf_2;
   static inline std::array<uint8_t, num_pixels> &active = led_buf_1;
   static inline std::array<uint8_t, num_pixels> &staging = led_buf_2;
   static void swap_buffers();
-  static bool ntp_update();
-  static inline WiFiUDP wifiUdp;
-  static inline NTPClient ntpClient = NTPClient(wifiUdp, "pool.ntp.org");
-  static inline Timestamp last_ntp_update;
 };
