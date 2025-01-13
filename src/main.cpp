@@ -26,6 +26,8 @@ void setup() {
 void loop() {
     my_hour = RtClock::get_tod_hour_12();
     my_minute = RtClock::get_tod_minute();
+    // REVIEW: I'm mean it doesn't look nice, but i dont think there is a better way. Any abstraction 
+    // would probably make it worse!
 
     // check if update necessary
     if (my_hour != last_hour || my_minute != last_minute) {
@@ -121,7 +123,7 @@ void loop() {
       update_done = ClockBoard::update(Timestamp::now() - last_transition, transition_time, ClockBoard::Transition::Linear);
     } else {
       // sleep a bit
-      // TODO replace with actual sleep
-      delay(1000);
+      // TODO replace with actual sleep 
+      delay(1000); 
     }
 }

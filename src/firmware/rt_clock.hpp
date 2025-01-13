@@ -6,6 +6,8 @@
 #include <WiFiUdp.h>
 #include <cstdint>
 
+// REVIEW: could also just be a namespace.
+// Avoids having to define to much internal behavior in headers. In my opinion better seperation
 class RtClock {
  public:
   enum WeekDay : uint32_t {

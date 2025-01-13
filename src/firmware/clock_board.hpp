@@ -5,9 +5,16 @@
 #include <Adafruit_NeoPixel.h>
 #include <array>
 #include <cstdint>
+/*
+ * REVIEW: Maybe you could do something where you express staging as a bitset, but to be honest i actually think
+ * this is fine. 
+ */
 
 class ClockBoard {
 public:
+  // REVIEW: I would probably prefer a function style for a transtion.
+  // A transition that is a function that maps the domain [0,1] to [0,1]. 
+  // Maybe just a function pointer or a abstract class (in any way indirect function call)
   enum class Transition {
     Linear,
   };
@@ -18,6 +25,9 @@ public:
                      const Transition transition);
   static void stage_clear();
 
+  // REVIEW: inline is kind of out of place here, probably better to define in source file.
+  // I would actually assume that this is bad to be inlined simply because it doesn't have to be super fast and 
+  // will probably polute I-caches in the main (switch statement).
   static inline void stage_es_ist() {
     staging[0] = 1;
     staging[1] = 1;
@@ -173,6 +183,7 @@ private:
   static inline Adafruit_NeoPixel led_strip;
   static inline std::array<uint8_t, num_pixels> led_buf_1;
   static inline std::array<uint8_t, num_pixels> led_buf_2;
+  // REVIEW: i would prefer pointers here, but references are also fine.
   static inline std::array<uint8_t, num_pixels> &active = led_buf_1;
   static inline std::array<uint8_t, num_pixels> &staging = led_buf_2;
   static void swap_buffers();

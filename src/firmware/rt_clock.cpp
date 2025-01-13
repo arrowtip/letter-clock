@@ -124,10 +124,13 @@ RtClock::Month RtClock::get_month() {
 uint32_t RtClock::get_tod_hour() {
   ntp_update();
   uint32_t hour = ntpClient.getHours();
+
+  // REVIEW: In theory you can add bools to uint32_t but i like this more!
   return (hour + (is_summer_time() ? 1 : 0)) % 24;
 }
 
 uint32_t RtClock::get_tod_hour_12() {
+  // REVIEW: Call get_tod_hour instead (Maybe, idk kind of seems fine this way too)
   ntp_update();
   uint32_t hour = ntpClient.getHours() + (is_summer_time() ? 1 : 0);
   return hour <= 12 ? hour : hour - 12;
