@@ -1,11 +1,50 @@
 #include "rt_clock.hpp"
 #include <cmath>
 #include <cstdint>
+#include <ESP8266WiFi.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 #include "../util/timestamp.hpp"
 #include "../secrets.hpp"
 
 extern const char* ssid;
 extern const char* pwd;
+
+static WiFiUDP wifiUdp;
+static NTPClient ntpClient = NTPClient(wifiUdp, "pool.ntp.org");
+static Timestamp last_ntp_update;
+
+
+bool ntp_update() {
+  if (WiFi.status() == WL_CONNECTED) {
+    if (Timestamp::now() - last_ntp_update > RtClock::ntp_update_interval) {
+      bool success = ntpClient.forceUpdate();
+      last_ntp_update = Timestamp::now();
+      return success;
+    }
+  }
+  return false;
+}
+
+bool is_summer_time() {
+  // starts on last sunday in March at 02:00
+  // end on last sunday in October at 02:00
+  if (RtClock::get_month() > 2 && RtClock::get_month() < 9) return true;
+  if (RtClock::get_month() == 2) {
+    if (RtClock::get_week_day() == RtClock::SUNDAY && RtClock::get_day() >= 24) {
+      if (RtClock::get_tod_hour() >= 2) return true;
+    } else if (RtClock::get_day() - RtClock::get_week_day() >= 24) {
+      return true;
+    }
+  } else if (RtClock::get_month() == 9) {
+    if (RtClock::get_week_day() == RtClock::SUNDAY && RtClock::get_day() >= 24) {
+      if (RtClock::get_tod_hour() < 2) return true;
+    } else if (RtClock::get_day() - RtClock::get_week_day() < 24) {
+      return true;
+    }
+  }
+  return false;
+}
 
 void RtClock::init() {
   WiFi.begin(ssid, pwd);
@@ -16,36 +55,6 @@ void RtClock::init() {
   last_ntp_update = Timestamp::now();
 }
 
-bool RtClock::ntp_update() {
-  if (WiFi.status() == WL_CONNECTED) {
-    if (Timestamp::now() - last_ntp_update > ntp_update_interval) {
-      bool success = ntpClient.forceUpdate();
-      last_ntp_update = Timestamp::now();
-      return success;
-    }
-  }
-  return false;
-}
-
-bool RtClock::is_summer_time() {
-  // starts on last sunday in March at 02:00
-  // end on last sunday in October at 02:00
-  if (get_month() > 2 && get_month() < 9) return true;
-  if (get_month() == 2) {
-    if (get_week_day() == SUNDAY && get_day() >= 24) {
-      if (get_tod_hour() >= 2) return true;
-    } else if (get_day() - get_week_day() >= 24) {
-      return true;
-    }
-  } else if (get_month() == 9) {
-    if (get_week_day() == SUNDAY && get_day() >= 24) {
-      if (get_tod_hour() < 2) return true;
-    } else if (get_day() - get_week_day() < 24) {
-      return true;
-    }
-  }
-  return false;
-}
 
 uint32_t RtClock::get_unix_time() {
   ntp_update();
@@ -53,7 +62,7 @@ uint32_t RtClock::get_unix_time() {
 }
 
 uint32_t RtClock::get_year() {
-
+  // TODO continue
   return 1970;
 }
 
@@ -78,12 +87,14 @@ uint32_t RtClock::get_day() {
   } else if (in_year < 151 + 30) {
     return in_year - 151;
   }
+  // TODO continue
 
+  return 0;
 }
 
 RtClock::WeekDay RtClock::get_week_day() {
   ntp_update();
-  return ntpClient.getDay();
+  return static_cast<WeekDay>(ntpClient.getDay());
 }
 
 RtClock::Month RtClock::get_month() {
@@ -129,7 +140,7 @@ uint32_t RtClock::get_tod_hour() {
 
 uint32_t RtClock::get_tod_hour_12() {
   ntp_update();
-  uint32_t hour = ntpClient.getHours() + (is_summer_time() ? 1 : 0);
+  uint32_t hour = get_tod_hour() + (is_summer_time() ? 1 : 0);
   return hour <= 12 ? hour : hour - 12;
 }
 

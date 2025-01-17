@@ -1,10 +1,24 @@
 #include "clock_board.hpp"
-#include <algorithm>
+#include <Adafruit_NeoPixel.h>
 #include <ESP8266WiFi.h>
-#include <WiFiUdp.h>
 #include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <algorithm>
+#include <cstddef>
 #include <limits>
+#include <span>
+#include <variant>
 
+static Adafruit_NeoPixel led_strip;
+static std::array<uint8_t, ClockBoard::num_pixels> led_buf_1;
+static std::array<uint8_t, ClockBoard::num_pixels> led_buf_2;
+static std::span<uint8_t> active(led_buf_1);
+static std::span<uint8_t> staging(led_buf_2);
+
+void swap_buffers() {
+  std::swap(active, staging);
+  ClockBoard::stage_clear();
+}
 
 void ClockBoard::init() {
   led_strip = Adafruit_NeoPixel(num_pixels, led_pin, NEO_GRB + NEO_KHZ800);
@@ -16,23 +30,19 @@ void ClockBoard::init() {
   swap_buffers();
 }
 
-void ClockBoard::stage_clear() { staging.fill(0); }
+void ClockBoard::stage_clear() { std::fill(staging.begin(), staging.end(), 0); }
 
 bool ClockBoard::update(const Duration time_since_last_transition,
                         const Duration transition_time,
-                        const Transition transition) {
-  const float progress =
+                        Transition &transition) {
+  const float progress = transition.progress(
       std::clamp(static_cast<Time>(time_since_last_transition) /
                      static_cast<Time>(transition_time),
-                 0.0f, 1.0f);
-  switch (transition) {
-  case Transition::Linear:
-    for (uint i = 0; i < num_pixels; i++) {
-      Color value = color_time * progress * staging[i] +
-                    color_time * (1.0f - progress) * active[i];
-      led_strip.setPixelColor(i, static_cast<uint32_t>(value));
-    }
-    break;
+                 0.0f, 1.0f));
+  for (std::size_t i = 0; i < num_pixels; i++) {
+    Color value = color_time * progress * staging[i] +
+                  color_time * (1.0f - progress) * active[i];
+    led_strip.setPixelColor(i, static_cast<uint32_t>(value));
   }
   led_strip.show();
   if (progress < 1.0f) {
@@ -43,13 +53,149 @@ bool ClockBoard::update(const Duration time_since_last_transition,
   }
 }
 
-void ClockBoard::swap_buffers() {
-  if (std::addressof(led_buf_1) == std::addressof(staging)) {
-    staging = led_buf_2;
-    active = led_buf_1;
-  } else {
-    staging = led_buf_1;
-    active = led_buf_2;
-  }
-  stage_clear();
+void ClockBoard::stage_es_ist() {
+  staging[0] = 1;
+  staging[1] = 1;
+  staging[2] = 1;
+  staging[3] = 1;
+  staging[4] = 1;
+  staging[5] = 1;
+}
+void ClockBoard::stage_nach() {
+  staging[40] = 1;
+  staging[41] = 1;
+  staging[42] = 1;
+  staging[43] = 1;
+}
+void ClockBoard::stage_vor() {
+  staging[33] = 1;
+  staging[34] = 1;
+  staging[35] = 1;
+}
+void ClockBoard::stage_halb() {
+  staging[44] = 1;
+  staging[45] = 1;
+  staging[46] = 1;
+  staging[47] = 1;
+}
+void ClockBoard::stage_uhr() {
+  staging[107] = 1;
+  staging[108] = 1;
+  staging[109] = 1;
+}
+void ClockBoard::stage_min_fuenf() {
+  staging[7] = 1;
+  staging[8] = 1;
+  staging[9] = 1;
+  staging[10] = 1;
+}
+void ClockBoard::stage_min_zehn() {
+  staging[11] = 1;
+  staging[12] = 1;
+  staging[13] = 1;
+  staging[14] = 1;
+}
+void ClockBoard::stage_min_drei() {
+  staging[22] = 1;
+  staging[23] = 1;
+  staging[24] = 1;
+  staging[25] = 1;
+}
+void ClockBoard::stage_min_viertel() {
+  staging[26] = 1;
+  staging[27] = 1;
+  staging[28] = 1;
+  staging[29] = 1;
+  staging[30] = 1;
+  staging[31] = 1;
+  staging[32] = 1;
+}
+void ClockBoard::stage_min_zwanzig() {
+  staging[15] = 1;
+  staging[16] = 1;
+  staging[17] = 1;
+  staging[18] = 1;
+  staging[19] = 1;
+  staging[20] = 1;
+  staging[21] = 1;
+}
+void ClockBoard::stage_hour_ein() {
+  staging[55] = 1;
+  staging[56] = 1;
+  staging[57] = 1;
+}
+void ClockBoard::stage_hour_eins() {
+  staging[55] = 1;
+  staging[56] = 1;
+  staging[57] = 1;
+  staging[58] = 1;
+}
+void ClockBoard::stage_hour_zwei() {
+  staging[62] = 1;
+  staging[63] = 1;
+  staging[64] = 1;
+  staging[65] = 1;
+}
+void ClockBoard::stage_hour_drei() {
+  staging[66] = 1;
+  staging[67] = 1;
+  staging[68] = 1;
+  staging[69] = 1;
+}
+void ClockBoard::stage_hour_vier() {
+  staging[73] = 1;
+  staging[74] = 1;
+  staging[75] = 1;
+  staging[76] = 1;
+}
+void ClockBoard::stage_hour_fuenf() {
+  staging[51] = 1;
+  staging[52] = 1;
+  staging[53] = 1;
+  staging[54] = 1;
+}
+void ClockBoard::stage_hour_sechs() {
+  staging[77] = 1;
+  staging[78] = 1;
+  staging[79] = 1;
+  staging[80] = 1;
+  staging[81] = 1;
+}
+void ClockBoard::stage_hour_sieben() {
+  staging[88] = 1;
+  staging[89] = 1;
+  staging[90] = 1;
+  staging[91] = 1;
+  staging[92] = 1;
+  staging[93] = 1;
+}
+void ClockBoard::stage_hour_acht() {
+  staging[84] = 1;
+  staging[85] = 1;
+  staging[86] = 1;
+  staging[87] = 1;
+}
+void ClockBoard::stage_hour_neun() {
+  staging[102] = 1;
+  staging[103] = 1;
+  staging[104] = 1;
+  staging[105] = 1;
+}
+void ClockBoard::stage_hour_zehn() {
+  staging[99] = 1;
+  staging[100] = 1;
+  staging[101] = 1;
+  staging[102] = 1;
+}
+void ClockBoard::stage_hour_elf() {
+  staging[49] = 1;
+  staging[50] = 1;
+  staging[51] = 1;
+}
+void ClockBoard::stage_hour_zwoelf() {
+  staging[94] = 1;
+  staging[95] = 1;
+  staging[96] = 1;
+  staging[97] = 1;
+  staging[98] = 1;
 }
