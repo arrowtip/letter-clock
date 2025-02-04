@@ -9,19 +9,20 @@
 #include <span>
 #include <variant>
 
-static Adafruit_NeoPixel led_strip;
+static Adafruit_NeoPixel led_strip = Adafruit_NeoPixel(
+    ClockBoard::num_pixels, ClockBoard::led_pin, NEO_GRB + NEO_KHZ800);
 static std::array<uint8_t, ClockBoard::num_pixels> led_buf_1;
 static std::array<uint8_t, ClockBoard::num_pixels> led_buf_2;
 static std::span<uint8_t> active(led_buf_1);
 static std::span<uint8_t> staging(led_buf_2);
 
 void swap_buffers() {
+  Serial.println("swap buffers called");
   std::swap(active, staging);
   ClockBoard::stage_clear();
 }
 
 void ClockBoard::init() {
-  led_strip = Adafruit_NeoPixel(num_pixels, led_pin, NEO_GRB + NEO_KHZ800);
   led_strip.begin();
   led_strip.clear();
   led_strip.setBrightness(brightness);
@@ -35,21 +36,23 @@ void ClockBoard::stage_clear() { std::fill(staging.begin(), staging.end(), 0); }
 bool ClockBoard::update(const Duration time_since_last_transition,
                         const Duration transition_time,
                         Transition &transition) {
-  const float progress = transition.progress(
+  const float progress =
       std::clamp(static_cast<Time>(time_since_last_transition) /
                      static_cast<Time>(transition_time),
-                 0.0f, 1.0f));
-  for (std::size_t i = 0; i < num_pixels; i++) {
-    Color value = color_time * progress * staging[i] +
-                  color_time * (1.0f - progress) * active[i];
-    led_strip.setPixelColor(i, static_cast<uint32_t>(value));
+                 0.0f, 1.0f);
+  const float trans_progress = transition.progress(progress);
+  Color old = color_time * (1.0f - trans_progress);
+  Color now = color_time * trans_progress;
+  for (uint16_t i = 0; i < num_pixels; i++) {
+    led_strip.setPixelColor(
+        i, static_cast<uint32_t>(now * staging[i] + old * active[i]));
   }
-  led_strip.show();
-  if (progress < 1.0f) {
-    return false;
-  } else {
+  if (progress >= 1.0f) {
     swap_buffers();
     return true;
+  } else {
+    led_strip.show();
+    return false;
   }
 }
 

@@ -16,8 +16,9 @@ static Timestamp last_ntp_update;
 
 
 bool ntp_update() {
-  if (WiFi.status() == WL_CONNECTED) {
-    if (Timestamp::now() - last_ntp_update > RtClock::ntp_update_interval) {
+  if (Timestamp::now() - last_ntp_update > RtClock::ntp_update_interval) {
+    Serial.println("NTP update");
+    if (WiFi.status() == WL_CONNECTED) {
       bool success = ntpClient.forceUpdate();
       last_ntp_update = Timestamp::now();
       return success;
@@ -68,7 +69,6 @@ uint32_t RtClock::get_year() {
 
 // first day is zero
 uint32_t RtClock::get_day() {
-  ntp_update();
   uint32_t num_days = get_unix_time() / 86400 + 1;
   uint32_t in_year = std::fmod(num_days, 365.25);
   bool leap_year = get_year() % 4 == 0;
@@ -93,12 +93,10 @@ uint32_t RtClock::get_day() {
 }
 
 RtClock::WeekDay RtClock::get_week_day() {
-  ntp_update();
   return static_cast<WeekDay>(ntpClient.getDay());
 }
 
 RtClock::Month RtClock::get_month() {
-  ntp_update();
   uint32_t num_days = get_unix_time() / 86400 + 1;
   uint32_t in_year = std::fmod(num_days, 365.25);
   bool leap_year = get_year() % 4 == 0;
@@ -139,7 +137,6 @@ uint32_t RtClock::get_tod_hour() {
 }
 
 uint32_t RtClock::get_tod_hour_12() {
-  ntp_update();
   uint32_t hour = get_tod_hour() + (is_summer_time() ? 1 : 0);
   return hour <= 12 ? hour : hour - 12;
 }

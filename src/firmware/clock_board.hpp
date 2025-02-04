@@ -2,6 +2,7 @@
 
 #include "../util/color.hpp"
 #include "../util/timestamp.hpp"
+#include "pins_arduino.h"
 #include <array>
 #include <cstdint>
 
@@ -41,7 +42,7 @@ void stage_hour_elf();
 void stage_hour_zwoelf();
 
 constexpr uint16_t num_pixels = 114;
-constexpr uint8_t led_pin = 2;
+constexpr uint8_t led_pin = D1;
 constexpr uint8_t brightness = 100;
 constexpr Color color_time = Color(0xa0a0a0);
 }; // namespace ClockBoard
