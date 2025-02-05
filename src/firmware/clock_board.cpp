@@ -17,7 +17,6 @@ static std::span<uint8_t> active(led_buf_1);
 static std::span<uint8_t> staging(led_buf_2);
 
 void swap_buffers() {
-  Serial.println("swap buffers called");
   std::swap(active, staging);
   ClockBoard::stage_clear();
 }
@@ -41,17 +40,17 @@ bool ClockBoard::update(const Duration time_since_last_transition,
                      static_cast<Time>(transition_time),
                  0.0f, 1.0f);
   const float trans_progress = transition.progress(progress);
-  Color old = color_time * (1.0f - trans_progress);
-  Color now = color_time * trans_progress;
+  const Color old = (1.0f - trans_progress) * color_time;
+  const Color now = color_time * trans_progress;
   for (uint16_t i = 0; i < num_pixels; i++) {
     led_strip.setPixelColor(
         i, static_cast<uint32_t>(now * staging[i] + old * active[i]));
   }
+  led_strip.show();
   if (progress >= 1.0f) {
     swap_buffers();
     return true;
   } else {
-    led_strip.show();
     return false;
   }
 }

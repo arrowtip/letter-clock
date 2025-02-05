@@ -1,24 +1,32 @@
 #include "rt_clock.hpp"
-#include <cmath>
-#include <cstdint>
+#include "../secrets.hpp"
+#include "../util/timestamp.hpp"
 #include <ESP8266WiFi.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include "../util/timestamp.hpp"
-#include "../secrets.hpp"
+#include <cmath>
+#include <cstdint>
 
-extern const char* ssid;
-extern const char* pwd;
+extern const char *ssid;
+extern const char *pwd;
 
 static WiFiUDP wifiUdp;
 static NTPClient ntpClient = NTPClient(wifiUdp, "pool.ntp.org");
 static Timestamp last_ntp_update;
 
+static constexpr uint32_t days_per_400y = (365 * 400 + 97);
+static constexpr uint32_t days_per_100y = (365 * 100 + 24);
+static constexpr uint32_t days_per_4y = (365 * 4 + 1);
+static constexpr std::array<uint32_t, 12> days_in_month = {
+    31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 29};
+// 2000-03-01 (2000 was a leap 400 year leap year)
+// see https://en.wikipedia.org/wiki/Leap_year
+static constexpr uint32_t leap_epoch = 946684800 + 86400 * (31 + 29);
 
 bool ntp_update() {
   if (Timestamp::now() - last_ntp_update > RtClock::ntp_update_interval) {
-    Serial.println("NTP update");
     if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("NTP update");
       bool success = ntpClient.forceUpdate();
       last_ntp_update = Timestamp::now();
       return success;
@@ -30,17 +38,24 @@ bool ntp_update() {
 bool is_summer_time() {
   // starts on last sunday in March at 02:00
   // end on last sunday in October at 02:00
-  if (RtClock::get_month() > 2 && RtClock::get_month() < 9) return true;
-  if (RtClock::get_month() == 2) {
-    if (RtClock::get_week_day() == RtClock::SUNDAY && RtClock::get_day() >= 24) {
-      if (RtClock::get_tod_hour() >= 2) return true;
-    } else if (RtClock::get_day() - RtClock::get_week_day() >= 24) {
+  RtClock::Date date;
+  RtClock::get_date(date);
+  if (date.month > RtClock::MARCH && date.month < RtClock::OCTOBER)
+    return true;
+  if (date.month == RtClock::MARCH) {
+    if (date.week_day == RtClock::SUNDAY &&
+        date.day >= 24) {
+      if (RtClock::get_tod_hour() >= 2)
+        return true;
+    } else if (date.day - date.week_day >= 24) {
       return true;
     }
-  } else if (RtClock::get_month() == 9) {
-    if (RtClock::get_week_day() == RtClock::SUNDAY && RtClock::get_day() >= 24) {
-      if (RtClock::get_tod_hour() < 2) return true;
-    } else if (RtClock::get_day() - RtClock::get_week_day() < 24) {
+  } else if (date.month == RtClock::OCTOBER) {
+    if (date.week_day == RtClock::SUNDAY &&
+        date.day >= 24) {
+      if (RtClock::get_tod_hour() < 2)
+        return true;
+    } else if (date.day - date.week_day < 24) {
       return true;
     }
   }
@@ -56,79 +71,66 @@ void RtClock::init() {
   last_ntp_update = Timestamp::now();
 }
 
-
-uint32_t RtClock::get_unix_time() {
+uint64_t RtClock::get_unix_time() {
   ntp_update();
   return ntpClient.getEpochTime();
 }
 
-uint32_t RtClock::get_year() {
-  // TODO continue
-  return 1970;
-}
-
-// first day is zero
-uint32_t RtClock::get_day() {
-  uint32_t num_days = get_unix_time() / 86400 + 1;
-  uint32_t in_year = std::fmod(num_days, 365.25);
-  bool leap_year = get_year() % 4 == 0;
-  if (in_year < 31) {
-    return in_year;
-  } else if (in_year < 31 + 28 + leap_year) {
-    return in_year - 31 - 28 - leap_year;
+bool RtClock::get_date(RtClock::Date &date) {
+  int64_t secs = get_unix_time() - leap_epoch;
+  int64_t days = secs / 86400;
+  int32_t rem_secs = secs % 86400;
+  // started negative days need to be counted
+  if (rem_secs < 0) {
+    rem_secs += 86400;
+    days--;
   }
-  in_year -= leap_year;
-  if (in_year < 59 + 31) {
-    return in_year - 59;
-  } else if (in_year < 90 + 30) {
-    return in_year - 90;
-  } else if (in_year < 120 + 31) {
-    return in_year - 120;
-  } else if (in_year < 151 + 30) {
-    return in_year - 151;
+  int32_t cycles_qcentr = days / days_per_400y;
+  int32_t rem_days = days % days_per_400y;
+  if (rem_days < 0) {
+    rem_days += days_per_400y;
+    cycles_qcentr--;
   }
-  // TODO continue
+  uint32_t cycles_centr = rem_days / days_per_100y;
+  if (cycles_centr == 4)
+    cycles_centr--;
+  rem_days -= cycles_centr * days_per_100y;
 
-  return 0;
-}
+  uint32_t cycles_q = rem_days / days_per_4y;
+  if (cycles_q == 4)
+    cycles_q--;
+  rem_days -= cycles_q * days_per_4y;
 
-RtClock::WeekDay RtClock::get_week_day() {
-  return static_cast<WeekDay>(ntpClient.getDay());
-}
+  int32_t rem_years = rem_days / 365;
+  if (rem_years == 4)
+    rem_years--;
+  rem_days -= rem_years * 365;
 
-RtClock::Month RtClock::get_month() {
-  uint32_t num_days = get_unix_time() / 86400 + 1;
-  uint32_t in_year = std::fmod(num_days, 365.25);
-  bool leap_year = get_year() % 4 == 0;
-  if (in_year < 31) {
-    return JANUARY;
-  } else {
-    in_year -= leap_year;
+  // leap year skipped every 100 years if not also divisible by 400
+  bool leap = !rem_years && (cycles_q || !cycles_centr);
+  uint32_t months;
+  for (months = 0; days_in_month[months] <= rem_days; months++) {
+    rem_days -= days_in_month[months];
   }
-  if (in_year < 31 + 28) {
-    return FEBRUARY;
-  } else if (in_year < 59 + 31) {
-    return MARCH;
-  } else if (in_year < 90 + 30) {
-    return APRIL;
-  } else if (in_year < 120 + 31) {
-    return MAY;
-  } else if (in_year < 151 + 30) {
-    return JUNE;
-  } else if (in_year < 181 + 31) {
-    return JULY;
-  } else if (in_year < 212 + 31) {
-    return AUGUST;
-  } else if (in_year < 243 + 30) {
-    return SEPTEMBER;
-  } else if (in_year < 273 + 31) {
-    return OCTOBER;
-  } else if (in_year < 304 + 30) {
-    return NOVEMBER;
-  } else {
-    return DECEMBER;
+  months += 2;
+  if (months >= 12) {
+    months -= 12;
+    rem_years++;
   }
-}
+
+  int32_t week_day = (3 + days) % 7;
+  if (week_day < 0)
+    week_day += 7;
+
+  date.year =
+      rem_years + 4 * cycles_q + 100 * cycles_centr + 400 * cycles_qcentr;
+  date.month = static_cast<RtClock::Month>(months);
+  date.day = rem_days + 1;
+  date.week_day = static_cast<RtClock::WeekDay>(week_day);
+  date.leap_year = leap;
+
+  return true;
+};
 
 uint32_t RtClock::get_tod_hour() {
   ntp_update();
@@ -145,4 +147,3 @@ uint32_t RtClock::get_tod_minute() {
   ntp_update();
   return ntpClient.getMinutes();
 }
-
