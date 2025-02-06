@@ -1,4 +1,6 @@
 #include "clock_board.hpp"
+#include "ESP8266WiFiType.h"
+#include "user_interface.h"
 #include <Adafruit_NeoPixel.h>
 #include <ESP8266WiFi.h>
 #include <NTPClient.h>
@@ -28,6 +30,34 @@ void ClockBoard::init() {
   led_strip.show();
   stage_clear();
   swap_buffers();
+  WiFi.setSleepMode(WIFI_LIGHT_SLEEP);
+}
+
+std::string ClockBoard::mac_address() {
+  return std::string(WiFi.macAddress().c_str());
+}
+
+void callback_wakeup() {
+  wifi_fpm_close();
+  wifi_set_opmode(STATION_MODE);
+  wifi_station_connect();
+
+  Serial.begin(115200);
+  // without println and flush the chip sleeps twice as long
+  // as it should.
+  Serial.println("");
+  Serial.flush();
+}
+
+/* system clock is shut off during light sleep */
+void ClockBoard::light_sleep(const Duration &duration) {
+  wifi_station_disconnect();
+  bool success = wifi_set_opmode(NULL_MODE);
+  wifi_fpm_set_sleep_type(LIGHT_SLEEP_T);
+  wifi_fpm_open();
+  wifi_fpm_set_wakeup_cb(callback_wakeup);
+  wifi_fpm_do_sleep(duration.as_us());
+  esp_delay(duration.as_ms() + 1);
 }
 
 void ClockBoard::stage_clear() { std::fill(staging.begin(), staging.end(), 0); }

@@ -26,9 +26,10 @@ static constexpr uint32_t leap_epoch = 946684800 + 86400 * (31 + 29);
 bool ntp_update() {
   if (Timestamp::now() - last_ntp_update > RtClock::ntp_update_interval) {
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("NTP update");
       bool success = ntpClient.forceUpdate();
-      last_ntp_update = Timestamp::now();
+      Serial.printf("NTP update: %d\n", success);
+      if (success)
+        last_ntp_update = Timestamp::now();
       return success;
     }
   }
@@ -43,16 +44,14 @@ bool is_summer_time() {
   if (date.month > RtClock::MARCH && date.month < RtClock::OCTOBER)
     return true;
   if (date.month == RtClock::MARCH) {
-    if (date.week_day == RtClock::SUNDAY &&
-        date.day >= 24) {
+    if (date.week_day == RtClock::SUNDAY && date.day >= 24) {
       if (RtClock::get_tod_hour() >= 2)
         return true;
     } else if (date.day - date.week_day >= 24) {
       return true;
     }
   } else if (date.month == RtClock::OCTOBER) {
-    if (date.week_day == RtClock::SUNDAY &&
-        date.day >= 24) {
+    if (date.week_day == RtClock::SUNDAY && date.day >= 24) {
       if (RtClock::get_tod_hour() < 2)
         return true;
     } else if (date.day - date.week_day < 24) {
