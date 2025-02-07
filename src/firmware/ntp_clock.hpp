@@ -3,7 +3,7 @@
 #include "../util/timestamp.hpp"
 #include <cstdint>
 
-namespace RtClock {
+namespace NtpClock {
 enum WeekDay : uint32_t {
   SUNDAY = 0,
   MONDAY,

@@ -1,8 +1,8 @@
-#include "firmware/clock_board.hpp"
-#include "firmware/rt_clock.hpp"
-#include "util/timestamp.hpp"
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
+#include "firmware/clock_board.hpp"
+#include "firmware/ntp_clock.hpp"
+#include "firmware/rtc.hpp"
+#include "util/timestamp.hpp"
 
 class MyTransition : public ClockBoard::Transition {
   float progress(const float f) override { return f; }
@@ -16,31 +16,39 @@ static bool update_done;
 static constexpr Duration transition_time = Duration::from_s(1);
 static Timestamp last_transition;
 static MyTransition my_transition;
-static RtClock::Date date;
+static NtpClock::Date date;
 
 void setup() {
   Serial.begin(115200);
+  while (!Serial)
+    delay(1);
+  delay(1000);
+
+  Rtc::init();
+  NtpClock::init();
   ClockBoard::init();
-  RtClock::init();
 
   last_hour = 25;
   last_minute = 61;
   update_done = true;
   last_transition = Timestamp::now();
 
-  Serial.print("MAC: ");
-  Serial.println(WiFi.macAddress());
+  Serial.println("");
+  Serial.println("##############################");
+  Serial.println("#  LETTER CLOCK STARTING UP  #");
+  Serial.println("##############################");
+  Serial.println("#        MAC address:        #");
+  Serial.printf("#     %s      #\n", ClockBoard::mac_address().c_str());
+  Serial.println("##############################");
+  Serial.println("");
 }
 
 void loop() {
-  my_hour = RtClock::get_tod_hour_12();
-  my_minute = RtClock::get_tod_minute();
+  my_hour = NtpClock::get_tod_hour_12();
+  my_minute = NtpClock::get_tod_minute();
 
-  RtClock::get_date(date);
-  Serial.printf("wifi status: %d\n", WiFi.status());
   Serial.printf("current time: %d : %d\n", my_hour, my_minute);
-  Serial.printf("current date: %d-%d-%d\n", date.year, date.month, date.day);
-  Serial.printf("weekday: %d\n", date.week_day);
+  Serial.printf("system time: %llu\n", Rtc::get_system_time());
 
   /*// check if update necessary*/
   if (my_hour != last_hour || my_minute != last_minute) {
@@ -136,10 +144,6 @@ void loop() {
     update_done = ClockBoard::update(Timestamp::now() - last_transition,
                                      transition_time, my_transition);
   } else {
-    // sleep a bit
-    // TODO replace with actual sleep
-    Serial.print("going to bed...");
-    delay(10000);
-    Serial.println("woke up");
+    ClockBoard::light_sleep(Duration::from_s(10));
   }
 }

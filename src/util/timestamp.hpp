@@ -2,7 +2,7 @@
 
 #include "metrics.hpp"
 #include <cstdint>
-#include <user_interface.h>
+#include "../firmware/rtc.hpp"
 
 class Timestamp {
   friend Timestamp operator+(const Timestamp &, const class Duration &);
@@ -23,7 +23,7 @@ class Timestamp {
 
 public:
   inline static Timestamp now() {
-    return Timestamp(system_get_time());
+    return Timestamp(Rtc::get_system_time());
   }
 
   Timestamp() = default;

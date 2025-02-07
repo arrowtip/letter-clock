@@ -1,4 +1,4 @@
-#include "rt_clock.hpp"
+#include "ntp_clock.hpp"
 #include "../secrets.hpp"
 #include "../util/timestamp.hpp"
 #include <ESP8266WiFi.h>
@@ -24,7 +24,7 @@ static constexpr std::array<uint32_t, 12> days_in_month = {
 static constexpr uint32_t leap_epoch = 946684800 + 86400 * (31 + 29);
 
 bool ntp_update() {
-  if (Timestamp::now() - last_ntp_update > RtClock::ntp_update_interval) {
+  if (Timestamp::now() - last_ntp_update > NtpClock::ntp_update_interval) {
     if (WiFi.status() == WL_CONNECTED) {
       bool success = ntpClient.forceUpdate();
       Serial.printf("NTP update: %d\n", success);
@@ -39,20 +39,20 @@ bool ntp_update() {
 bool is_summer_time() {
   // starts on last sunday in March at 02:00
   // end on last sunday in October at 02:00
-  RtClock::Date date;
-  RtClock::get_date(date);
-  if (date.month > RtClock::MARCH && date.month < RtClock::OCTOBER)
+  NtpClock::Date date;
+  NtpClock::get_date(date);
+  if (date.month > NtpClock::MARCH && date.month < NtpClock::OCTOBER)
     return true;
-  if (date.month == RtClock::MARCH) {
-    if (date.week_day == RtClock::SUNDAY && date.day >= 24) {
-      if (RtClock::get_tod_hour() >= 2)
+  if (date.month == NtpClock::MARCH) {
+    if (date.week_day == NtpClock::SUNDAY && date.day >= 24) {
+      if (NtpClock::get_tod_hour() >= 2)
         return true;
     } else if (date.day - date.week_day >= 24) {
       return true;
     }
-  } else if (date.month == RtClock::OCTOBER) {
-    if (date.week_day == RtClock::SUNDAY && date.day >= 24) {
-      if (RtClock::get_tod_hour() < 2)
+  } else if (date.month == NtpClock::OCTOBER) {
+    if (date.week_day == NtpClock::SUNDAY && date.day >= 24) {
+      if (NtpClock::get_tod_hour() < 2)
         return true;
     } else if (date.day - date.week_day < 24) {
       return true;
@@ -61,7 +61,7 @@ bool is_summer_time() {
   return false;
 }
 
-void RtClock::init() {
+void NtpClock::init() {
   WiFi.begin(ssid, pwd);
   ntpClient.begin();
   ntpClient.setTimeOffset(ntp_time_offset.as_ms() / 1000);
@@ -70,12 +70,12 @@ void RtClock::init() {
   last_ntp_update = Timestamp::now();
 }
 
-uint64_t RtClock::get_unix_time() {
+uint64_t NtpClock::get_unix_time() {
   ntp_update();
   return ntpClient.getEpochTime();
 }
 
-bool RtClock::get_date(RtClock::Date &date) {
+bool NtpClock::get_date(NtpClock::Date &date) {
   int64_t secs = get_unix_time() - leap_epoch;
   int64_t days = secs / 86400;
   int32_t rem_secs = secs % 86400;
@@ -123,26 +123,26 @@ bool RtClock::get_date(RtClock::Date &date) {
 
   date.year =
       rem_years + 4 * cycles_q + 100 * cycles_centr + 400 * cycles_qcentr;
-  date.month = static_cast<RtClock::Month>(months);
+  date.month = static_cast<NtpClock::Month>(months);
   date.day = rem_days + 1;
-  date.week_day = static_cast<RtClock::WeekDay>(week_day);
+  date.week_day = static_cast<NtpClock::WeekDay>(week_day);
   date.leap_year = leap;
 
   return true;
 };
 
-uint32_t RtClock::get_tod_hour() {
+uint32_t NtpClock::get_tod_hour() {
   ntp_update();
   uint32_t hour = ntpClient.getHours();
   return (hour + (is_summer_time() ? 1 : 0)) % 24;
 }
 
-uint32_t RtClock::get_tod_hour_12() {
+uint32_t NtpClock::get_tod_hour_12() {
   uint32_t hour = get_tod_hour() + (is_summer_time() ? 1 : 0);
   return hour <= 12 ? hour : hour - 12;
 }
 
-uint32_t RtClock::get_tod_minute() {
+uint32_t NtpClock::get_tod_minute() {
   ntp_update();
   return ntpClient.getMinutes();
 }
