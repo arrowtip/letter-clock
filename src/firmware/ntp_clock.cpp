@@ -1,18 +1,16 @@
 #include "ntp_clock.hpp"
 #include "../secrets.hpp"
 #include "../util/timestamp.hpp"
+#include "wl_definitions.h"
 #include <ESP8266WiFi.h>
-#include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <cmath>
 #include <cstdint>
 
+#define NTP_DEBUG
+
 extern const char *ssid;
 extern const char *pwd;
-
-static WiFiUDP wifiUdp;
-static NTPClient ntpClient = NTPClient(wifiUdp, "pool.ntp.org");
-static Timestamp last_ntp_update;
 
 static constexpr uint32_t days_per_400y = (365 * 400 + 97);
 static constexpr uint32_t days_per_100y = (365 * 100 + 24);
@@ -22,15 +20,104 @@ static constexpr std::array<uint32_t, 12> days_in_month = {
 // 2000-03-01 (2000 was a leap 400 year leap year)
 // see https://en.wikipedia.org/wiki/Leap_year
 static constexpr uint32_t leap_epoch = 946684800 + 86400 * (31 + 29);
+static constexpr uint64_t secs_per_70y = 2208988800UL;
+
+static WiFiUDP wifiUdp;
+static constexpr uint16_t local_udp_port = 1337;
+static constexpr size_t ntp_packet_size = 48;
+static std::array<byte, ntp_packet_size> udp_buffer;
+static constexpr Duration ntp_timeout = Duration::from_s(5);
+
+static Timestamp last_ntp_update;
+static Timestamp last_update_start;
+static uint64_t last_ntp_time;
+static bool during_update;
+
+void NtpClock::init() {
+  WiFi.begin(ssid, pwd);
+  wifiUdp.begin(local_udp_port);
+  last_ntp_update = Timestamp::now();
+  last_update_start = Timestamp::now();
+  last_ntp_time = 0;
+  during_update = false;
+}
+
+bool NtpClock::in_update() { return during_update; }
+
+bool NtpClock::need_update() {
+  return Timestamp::now() - last_ntp_update > ntp_update_interval;
+}
+
+bool ntp_update_start() {
+  if (WiFi.status() != WL_CONNECTED)
+    return false;
+#ifdef NTP_DEBUG
+  Serial.println("ntp update started");
+#endif
+  // flush any existing packets
+  while (wifiUdp.parsePacket() != 0)
+    wifiUdp.flush();
+
+  memset(udp_buffer.begin(), 0, ntp_packet_size);
+  // Initialize values needed to form NTP request
+  udp_buffer[0] = 0b11100011; // LI, Version, Mode
+  udp_buffer[1] = 0;          // Stratum, or type of clock
+  udp_buffer[2] = 6;          // Polling Interval
+  udp_buffer[3] = 0xEC;       // Peer Clock Precision
+  // 8 bytes of zero for Root Delay & Root Dispersion
+  udp_buffer[12] = 49;
+  udp_buffer[13] = 0x4E;
+  udp_buffer[14] = 49;
+  udp_buffer[15] = 52;
+
+  // all NTP fields have been given values, now
+  // you can send a packet requesting a timestamp:
+  wifiUdp.beginPacket(NtpClock::ntp_server_name, 123);
+  wifiUdp.write(udp_buffer.begin(), ntp_packet_size);
+  wifiUdp.endPacket();
+
+  during_update = true;
+  last_update_start = Timestamp::now();
+  return true;
+}
+
+bool ntp_update_end() {
+  if (Timestamp::now() - last_update_start > ntp_timeout) {
+#ifdef NTP_DEBUG
+    Serial.println("ntp update aborted due to timeout");
+#endif
+    during_update = false;
+    return false;
+  }
+  if (wifiUdp.parsePacket() == 0) {
+    delay(10);
+    return false;
+  }
+
+  // maybe use half time since update_start until now?
+  last_ntp_update = last_update_start;
+
+  wifiUdp.read(udp_buffer.begin(), ntp_packet_size);
+
+  uint64_t highWord = word(udp_buffer[40], udp_buffer[41]);
+  uint64_t lowWord = word(udp_buffer[42], udp_buffer[43]);
+  uint64_t secsSince1900 = (highWord << 16) | lowWord;
+  last_ntp_time = secsSince1900 - secs_per_70y;
+
+#ifdef NTP_DEBUG
+  Serial.println("ntp update successful");
+#endif
+
+  during_update = false;
+  return true;
+}
 
 bool ntp_update() {
   if (Timestamp::now() - last_ntp_update > NtpClock::ntp_update_interval) {
-    if (WiFi.status() == WL_CONNECTED) {
-      bool success = ntpClient.forceUpdate();
-      Serial.printf("NTP update: %d\n", success);
-      if (success)
-        last_ntp_update = Timestamp::now();
-      return success;
+    if (!NtpClock::in_update()) {
+      ntp_update_start();
+    } else {
+      return ntp_update_end();
     }
   }
   return false;
@@ -61,18 +148,10 @@ bool is_summer_time() {
   return false;
 }
 
-void NtpClock::init() {
-  WiFi.begin(ssid, pwd);
-  ntpClient.begin();
-  ntpClient.setTimeOffset(ntp_time_offset.as_ms() / 1000);
-  // manually control updates with forceUpdate()
-  ntpClient.setUpdateInterval(std::numeric_limits<unsigned long>::max());
-  last_ntp_update = Timestamp::now();
-}
-
 uint64_t NtpClock::get_unix_time() {
   ntp_update();
-  return ntpClient.getEpochTime();
+  return last_ntp_time +
+         (Timestamp::now() - last_ntp_update + ntp_time_offset).as_ms() / 1000;
 }
 
 bool NtpClock::get_date(NtpClock::Date &date) {
@@ -132,8 +211,7 @@ bool NtpClock::get_date(NtpClock::Date &date) {
 };
 
 uint32_t NtpClock::get_tod_hour() {
-  ntp_update();
-  uint32_t hour = ntpClient.getHours();
+  uint32_t hour = ((get_unix_time() % 86400L) / 3600);
   return (hour + (is_summer_time() ? 1 : 0)) % 24;
 }
 
@@ -142,7 +220,4 @@ uint32_t NtpClock::get_tod_hour_12() {
   return hour <= 12 ? hour : hour - 12;
 }
 
-uint32_t NtpClock::get_tod_minute() {
-  ntp_update();
-  return ntpClient.getMinutes();
-}
+uint32_t NtpClock::get_tod_minute() { return ((get_unix_time() % 3600) / 60); }

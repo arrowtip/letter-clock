@@ -40,7 +40,10 @@ bool get_date(Date &date);
 uint32_t get_tod_hour();
 uint32_t get_tod_hour_12();
 uint32_t get_tod_minute();
+bool in_update();
+bool need_update();
 
 constexpr Duration ntp_time_offset = Duration::from_s(3600);
-constexpr Duration ntp_update_interval = Duration::from_s(301);
+constexpr Duration ntp_update_interval = Duration::from_s(30);
+constexpr char* ntp_server_name = "pool.ntp.org";
 }; // namespace RtClock

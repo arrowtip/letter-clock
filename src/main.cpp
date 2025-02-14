@@ -4,8 +4,20 @@
 #include "firmware/rtc.hpp"
 #include "util/timestamp.hpp"
 
-class MyTransition : public ClockBoard::Transition {
+#define MAIN_DEBUG
+
+class Linear : public ClockBoard::Transition {
   float progress(const float f) override { return f; }
+};
+class Square : public ClockBoard::Transition {
+  float progress(const float f) override { 
+    return f < 0.5 ? 2 * f * f : 1 - std::pow(-2 * f + 2, 2) / 2;
+  }
+};
+class Quad : public ClockBoard::Transition {
+  float progress(const float f) override { 
+    return f < 0.5 ? 8 * f * f * f * f : 1 - std::pow(-2 * f + 2, 4) / 2;
+  }
 };
 
 static uint32_t last_hour;
@@ -13,9 +25,9 @@ static uint32_t last_minute;
 static uint32_t my_hour;
 static uint32_t my_minute;
 static bool update_done;
-static constexpr Duration transition_time = Duration::from_s(1);
+static constexpr Duration transition_time = Duration::from_s(2);
 static Timestamp last_transition;
-static MyTransition my_transition;
+static Quad my_transition;
 static NtpClock::Date date;
 
 void setup() {
@@ -47,11 +59,13 @@ void loop() {
   my_hour = NtpClock::get_tod_hour_12();
   my_minute = NtpClock::get_tod_minute();
 
+  // check if update necessary
+  if (my_hour != last_hour || my_minute != last_minute) {
+#ifdef MAIN_DEBUG
   Serial.printf("current time: %d : %d\n", my_hour, my_minute);
   Serial.printf("system time: %llu\n", Rtc::get_system_time());
+#endif
 
-  /*// check if update necessary*/
-  if (my_hour != last_hour || my_minute != last_minute) {
     ClockBoard::stage_es_ist();
     if (my_minute < 5) {
       ClockBoard::stage_uhr();
@@ -139,11 +153,14 @@ void loop() {
     last_minute = my_minute;
     update_done = false;
     last_transition = Timestamp::now();
+#ifdef MAIN_DEBUG
+    Serial.println("main transition start");
+#endif
   }
   if (!update_done) {
     update_done = ClockBoard::update(Timestamp::now() - last_transition,
                                      transition_time, my_transition);
   } else {
-    ClockBoard::light_sleep(Duration::from_s(10));
+    ClockBoard::try_light_sleep(Duration::from_s(10));
   }
 }

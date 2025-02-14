@@ -1,5 +1,4 @@
 #pragma once
-
 #include "../util/color.hpp"
 #include "../util/timestamp.hpp"
 #include "pins_arduino.h"
@@ -16,7 +15,8 @@ void init();
 bool update(const Duration time_since_last_transition,
             const Duration transition_time, Transition &transition);
 void stage_clear();
-void light_sleep(const Duration &duration);
+bool light_sleep(const Duration &duration);
+bool try_light_sleep(const Duration &duration);
 std::string mac_address();
 
 void stage_es_ist();

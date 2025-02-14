@@ -1,5 +1,6 @@
 #include "clock_board.hpp"
 #include "ESP8266WiFiType.h"
+#include "firmware/ntp_clock.hpp"
 #include "user_interface.h"
 #include <Adafruit_NeoPixel.h>
 #include <ESP8266WiFi.h>
@@ -10,6 +11,8 @@
 #include <limits>
 #include <span>
 #include <variant>
+
+#define BOARD_DEBUG
 
 static Adafruit_NeoPixel led_strip = Adafruit_NeoPixel(
     ClockBoard::num_pixels, ClockBoard::led_pin, NEO_GRB + NEO_KHZ800);
@@ -50,14 +53,33 @@ void callback_wakeup() {
 }
 
 /* system clock is shut off during light sleep */
-void ClockBoard::light_sleep(const Duration &duration) {
+bool ClockBoard::light_sleep(const Duration &duration) {
   wifi_station_disconnect();
   bool success = wifi_set_opmode(NULL_MODE);
+#ifdef BOARD_DEBUG
+  Serial.printf("board set op mode was: %d\n", success);
+#endif
   wifi_fpm_set_sleep_type(LIGHT_SLEEP_T);
   wifi_fpm_open();
   wifi_fpm_set_wakeup_cb(callback_wakeup);
   wifi_fpm_do_sleep(duration.as_us());
   esp_delay(duration.as_ms() + 1);
+  return success;
+}
+
+/* system clock is shut off during light sleep */
+bool ClockBoard::try_light_sleep(const Duration &duration) {
+  // give wifi time to connect if update necessary
+  if (NtpClock::need_update() || NtpClock::in_update()) {
+#ifdef BOARD_DEBUG
+    Serial.println("sleep aborted");
+#endif
+    return false;
+  }
+#ifdef BOARD_DEBUG
+  Serial.println("board actually going to sleep");
+#endif
+  return light_sleep(duration);
 }
 
 void ClockBoard::stage_clear() { std::fill(staging.begin(), staging.end(), 0); }
@@ -78,6 +100,9 @@ bool ClockBoard::update(const Duration time_since_last_transition,
   }
   led_strip.show();
   if (progress >= 1.0f) {
+#ifdef BOARD_DEBUG
+    Serial.println("board transition completed");
+#endif
     swap_buffers();
     return true;
   } else {
