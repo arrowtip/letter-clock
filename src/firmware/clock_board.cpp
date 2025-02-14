@@ -12,7 +12,7 @@
 #include <span>
 #include <variant>
 
-#define BOARD_DEBUG
+/*#define BOARD_DEBUG*/
 
 static Adafruit_NeoPixel led_strip = Adafruit_NeoPixel(
     ClockBoard::num_pixels, ClockBoard::led_pin, NEO_GRB + NEO_KHZ800);
@@ -54,6 +54,9 @@ void callback_wakeup() {
 
 /* system clock is shut off during light sleep */
 bool ClockBoard::light_sleep(const Duration &duration) {
+  if (duration == Duration::from_ms(0)) {
+    return true;
+  }
   wifi_station_disconnect();
   bool success = wifi_set_opmode(NULL_MODE);
 #ifdef BOARD_DEBUG

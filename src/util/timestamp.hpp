@@ -285,17 +285,17 @@ static inline bool operator>=(const volatile Duration &a, const Duration &b) {
 }
 
 static inline bool operator==(const Duration &a, const Duration &b) {
-  return static_cast<uint32_t>(a) != static_cast<uint32_t>(b);
+  return static_cast<uint32_t>(a) == static_cast<uint32_t>(b);
 }
 static inline bool operator==(const volatile Duration &a,
                               const volatile Duration &b) {
-  return static_cast<uint32_t>(a) != static_cast<uint32_t>(b);
+  return static_cast<uint32_t>(a) == static_cast<uint32_t>(b);
 }
 static inline bool operator==(const Duration &a, const volatile Duration &b) {
-  return static_cast<uint32_t>(a) != static_cast<uint32_t>(b);
+  return static_cast<uint32_t>(a) == static_cast<uint32_t>(b);
 }
 static inline bool operator==(const volatile Duration &a, const Duration &b) {
-  return static_cast<uint32_t>(a) != static_cast<uint32_t>(b);
+  return static_cast<uint32_t>(a) == static_cast<uint32_t>(b);
 }
 
 static inline bool operator!=(const Duration &a, const Duration &b) {

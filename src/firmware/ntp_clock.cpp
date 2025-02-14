@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstdint>
 
-#define NTP_DEBUG
+//#define NTP_DEBUG
 
 extern const char *ssid;
 extern const char *pwd;
@@ -221,3 +221,5 @@ uint32_t NtpClock::get_tod_hour_12() {
 }
 
 uint32_t NtpClock::get_tod_minute() { return ((get_unix_time() % 3600) / 60); }
+
+uint32_t NtpClock::get_tod_second() { return get_unix_time() % 60; }
