@@ -21,12 +21,19 @@ static std::array<uint8_t, ClockBoard::num_pixels> led_buf_2;
 static std::span<uint8_t> active(led_buf_1);
 static std::span<uint8_t> staging(led_buf_2);
 
+enum FetState : uint8_t {
+  FetOpen = 0,
+  FetClosed = 1,
+};
+
 void swap_buffers() {
   std::swap(active, staging);
   ClockBoard::stage_clear();
 }
 
 void ClockBoard::init() {
+  pinMode(fet_pin, OUTPUT);
+  led_power(false);
   led_strip.begin();
   led_strip.clear();
   led_strip.setBrightness(brightness);
@@ -38,6 +45,10 @@ void ClockBoard::init() {
 
 std::string ClockBoard::mac_address() {
   return std::string(WiFi.macAddress().c_str());
+}
+
+void ClockBoard::led_power(bool on) {
+  digitalWrite(fet_pin, on ? FetClosed : FetOpen);
 }
 
 void callback_wakeup() {

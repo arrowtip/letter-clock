@@ -18,6 +18,7 @@ void stage_clear();
 bool light_sleep(const Duration &duration);
 bool try_light_sleep(const Duration &duration);
 std::string mac_address();
+void led_power(bool on);
 
 void stage_es_ist();
 void stage_nach();
@@ -44,7 +45,8 @@ void stage_hour_elf();
 void stage_hour_zwoelf();
 
 constexpr uint16_t num_pixels = 114;
-constexpr uint8_t led_pin = D1;
+constexpr uint8_t led_pin = D4;
+constexpr uint8_t fet_pin = D3;
 constexpr uint8_t brightness = 100;
 constexpr Color color_time = Color(0xa0a0a0);
 }; // namespace ClockBoard

@@ -55,6 +55,8 @@ void setup() {
   Serial.printf("#     %s      #\n", ClockBoard::mac_address().c_str());
   Serial.println("##############################");
   Serial.println("");
+
+  ClockBoard::led_power(true);
 }
 
 void loop() {
