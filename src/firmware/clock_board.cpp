@@ -127,7 +127,6 @@ bool ClockBoard::update(const Duration time_since_last_transition,
 void ClockBoard::stage_es_ist() {
   staging[0] = 1;
   staging[1] = 1;
-  staging[2] = 1;
   staging[3] = 1;
   staging[4] = 1;
   staging[5] = 1;
