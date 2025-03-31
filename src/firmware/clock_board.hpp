@@ -47,6 +47,6 @@ void stage_hour_zwoelf();
 constexpr uint16_t num_pixels = 114;
 constexpr uint8_t led_pin = D4;
 constexpr uint8_t fet_pin = D3;
-constexpr uint8_t brightness = 100;
+constexpr uint8_t brightness = 40;
 constexpr Color color_time = Color(0xa0a0a0);
 }; // namespace ClockBoard

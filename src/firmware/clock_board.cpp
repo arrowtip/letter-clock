@@ -1,5 +1,4 @@
 #include "clock_board.hpp"
-#include "ESP8266WiFiType.h"
 #include "firmware/ntp_clock.hpp"
 #include "user_interface.h"
 #include <Adafruit_NeoPixel.h>

@@ -1,13 +1,13 @@
 #include "ntp_clock.hpp"
 #include "../secrets.hpp"
 #include "../util/timestamp.hpp"
-#include "wl_definitions.h"
 #include <ESP8266WiFi.h>
+#include "wl_definitions.h"
 #include <WiFiUdp.h>
 #include <cmath>
 #include <cstdint>
 
-//#define NTP_DEBUG
+/*#define NTP_DEBUG*/
 
 extern const char *ssid;
 extern const char *pwd;
@@ -33,24 +33,20 @@ static Timestamp last_update_start;
 static uint64_t last_ntp_time;
 static bool during_update;
 
-void NtpClock::init() {
-  WiFi.begin(ssid, pwd);
-  wifiUdp.begin(local_udp_port);
-  last_ntp_update = Timestamp::now();
-  last_update_start = Timestamp::now();
-  last_ntp_time = 0;
-  during_update = false;
-}
-
-bool NtpClock::in_update() { return during_update; }
-
-bool NtpClock::need_update() {
-  return Timestamp::now() - last_ntp_update > ntp_update_interval;
-}
 
 bool ntp_update_start() {
-  if (WiFi.status() != WL_CONNECTED)
-    return false;
+  if (WiFi.status() != WL_CONNECTED) {
+    for (int i = 0; i < 3 && WiFi.status() != WL_CONNECTED; i++) {
+#ifdef NTP_DEBUG
+      Serial.printf("no wifi connection for ntp update: %d\n", WiFi.status());
+#endif
+      WiFi.begin(ssid, pwd);
+      // delay seems to be necassary for connection to be established
+      delay(10000);
+    }
+    if (WiFi.status() != WL_CONNECTED) return false;
+  }
+
 #ifdef NTP_DEBUG
   Serial.println("ntp update started");
 #endif
@@ -80,6 +76,30 @@ bool ntp_update_start() {
   last_update_start = Timestamp::now();
   return true;
 }
+
+void NtpClock::init() {
+  wifiUdp.begin(local_udp_port);
+  WiFi.persistent(true);
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoConnect(true);
+  WiFi.setAutoReconnect(true);
+  WiFi.setOutputPower(15); 
+  WiFi.setPhyMode(WIFI_PHY_MODE_11G);
+  WiFi.begin(ssid, pwd);
+  last_ntp_update = Timestamp::now();
+  last_update_start = Timestamp::now();
+  last_ntp_time = 0;
+  during_update = false;
+
+  ntp_update_start();
+}
+
+bool NtpClock::in_update() { return during_update; }
+
+bool NtpClock::need_update() {
+  return Timestamp::now() - last_ntp_update > ntp_update_interval;
+}
+
 
 bool ntp_update_end() {
   if (Timestamp::now() - last_update_start > ntp_timeout) {
@@ -113,12 +133,10 @@ bool ntp_update_end() {
 }
 
 bool ntp_update() {
-  if (Timestamp::now() - last_ntp_update > NtpClock::ntp_update_interval) {
-    if (!NtpClock::in_update()) {
-      ntp_update_start();
-    } else {
-      return ntp_update_end();
-    }
+  if (NtpClock::in_update()) {
+    return ntp_update_end();
+  } else if (NtpClock::need_update()) {
+    ntp_update_start();
   }
   return false;
 }

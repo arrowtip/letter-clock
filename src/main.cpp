@@ -4,8 +4,9 @@
 #include "util/timestamp.hpp"
 #include <Arduino.h>
 #include <algorithm>
+#include "secrets.hpp"
 
-#define MAIN_DEBUG
+/*#define MAIN_DEBUG*/
 
 class Linear : public ClockBoard::Transition {
   float progress(const float f) override { return f; }
@@ -35,8 +36,8 @@ static NtpClock::Date date;
 void setup() {
   Serial.begin(115200);
   while (!Serial)
-    delay(1);
-  delay(1000);
+    delay(10);
+  delay(3000);
 
   Rtc::init();
   NtpClock::init();
@@ -157,17 +158,17 @@ void loop() {
     last_minute = my_minute;
     update_done = false;
     last_transition = Timestamp::now();
-  }
-  if (!update_done) {
+  } else if (!update_done) {
     update_done = ClockBoard::update(Timestamp::now() - last_transition,
                                      transition_time, my_transition);
-  } else {
-    int32_t sleep_time = 50 - my_second;
-    if (sleep_time > 0) {
+  } 
+
+  int32_t sleep_time = 50 - my_second;
+  if (sleep_time > 0) {
 #ifdef MAIN_DEBUG
-      Serial.printf("sleep time: %d\n", sleep_time);
+    Serial.printf("sleep time: %d\n", sleep_time);
 #endif
-      ClockBoard::try_light_sleep(Duration::from_s(sleep_time));
-    }
+    /*ClockBoard::try_light_sleep(Duration::from_s(sleep_time));*/
+    delay(sleep_time * 1000);
   }
 }
