@@ -188,6 +188,11 @@ void ClockBoard::stage_min_zwanzig() {
   staging[20] = 1;
   staging[21] = 1;
 }
+void ClockBoard::stage_min_single(uint8_t min) {
+  for (int i = 1; i <= min; i++) {
+    staging[109 + i] = 1;
+  }
+}
 void ClockBoard::stage_hour_ein() {
   staging[55] = 1;
   staging[56] = 1;

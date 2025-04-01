@@ -6,7 +6,7 @@
 #include <algorithm>
 #include "secrets.hpp"
 
-/*#define MAIN_DEBUG*/
+#define MAIN_DEBUG
 
 class Linear : public ClockBoard::Transition {
   float progress(const float f) override { return f; }
@@ -25,6 +25,7 @@ class Quad : public ClockBoard::Transition {
 static uint32_t last_hour;
 static uint32_t last_minute;
 static uint32_t my_hour;
+static uint32_t my_hour_24;
 static uint32_t my_minute;
 static uint32_t my_second;
 static bool update_done;
@@ -32,6 +33,10 @@ static constexpr Duration transition_time = Duration::from_s(2);
 static Timestamp last_transition;
 static Quad my_transition;
 static NtpClock::Date date;
+
+static bool night_off;
+static constexpr uint32_t night_off_start = 23;
+static constexpr uint32_t night_off_end = 6;
 
 void setup() {
   Serial.begin(115200);
@@ -47,6 +52,7 @@ void setup() {
   last_minute = 61;
   update_done = true;
   last_transition = Timestamp::now();
+  night_off = false;
 
   Serial.println("");
   Serial.println("##############################");
@@ -62,11 +68,29 @@ void setup() {
 
 void loop() {
   my_hour = NtpClock::get_tod_hour_12();
+  my_hour_24 = NtpClock::get_tod_hour();
   my_minute = NtpClock::get_tod_minute();
   my_second = NtpClock::get_tod_second();
 
-  // check if update necessary
-  if (my_hour != last_hour || my_minute != last_minute) {
+  if (my_hour_24 < night_off_end || my_hour_24 >= night_off_start) {
+#ifdef MAIN_DEBUG
+    Serial.println("in night out");
+#endif
+    if (night_off && update_done) {
+      while (my_hour_24 < night_off_end || my_hour_24 >= night_off_start) { 
+        ClockBoard::led_power(false);
+        delay(1000 * 60 * 10);
+        my_hour_24 = NtpClock::get_tod_hour();
+      }
+      night_off = false;
+      ClockBoard::led_power(true);
+    } else if (!night_off) {
+      night_off = true;
+      ClockBoard::stage_clear();
+      update_done = false;
+      last_transition = Timestamp::now();
+    }
+  } else if (my_hour != last_hour || my_minute != last_minute) {
 #ifdef MAIN_DEBUG
     Serial.printf("current time: %d : %d\n", my_hour, my_minute);
 #endif
@@ -154,17 +178,20 @@ void loop() {
       ClockBoard::stage_hour_zwoelf();
       break;
     }
+    ClockBoard::stage_min_single(my_minute % 5);
     last_hour = my_hour;
     last_minute = my_minute;
     update_done = false;
     last_transition = Timestamp::now();
-  } else if (!update_done) {
+  }
+
+  if (!update_done) {
     update_done = ClockBoard::update(Timestamp::now() - last_transition,
                                      transition_time, my_transition);
   } 
 
-  int32_t sleep_time = 50 - my_second;
-  if (sleep_time > 0) {
+  int32_t sleep_time = 59 - my_second;
+  if (update_done && sleep_time > 0) {
 #ifdef MAIN_DEBUG
     Serial.printf("sleep time: %d\n", sleep_time);
 #endif

@@ -30,6 +30,7 @@ void stage_min_zehn();
 void stage_min_drei();
 void stage_min_viertel();
 void stage_min_zwanzig();
+void stage_min_single(uint8_t min);
 void stage_hour_ein();
 void stage_hour_eins();
 void stage_hour_zwei();
@@ -47,6 +48,6 @@ void stage_hour_zwoelf();
 constexpr uint16_t num_pixels = 114;
 constexpr uint8_t led_pin = D4;
 constexpr uint8_t fet_pin = D3;
-constexpr uint8_t brightness = 40;
+constexpr uint8_t brightness = 120;
 constexpr Color color_time = Color(0xa0a0a0);
 }; // namespace ClockBoard
